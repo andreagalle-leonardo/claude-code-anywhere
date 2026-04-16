@@ -1,0 +1,29 @@
+{
+  "name": "Claude Code + OpenRouter",
+  "image": "mcr.microsoft.com/devcontainers/base:ubuntu-24.04",
+
+  // Install Node.js (required by Claude Code) and Claude Code itself
+  "features": {
+    "ghcr.io/devcontainers/features/node:1": {
+      "version": "lts"
+    }
+  },
+
+  "postCreateCommand": "npm install -g @anthropic-ai/claude-code",
+
+  // Forward your OpenRouter credentials from host environment
+  "remoteEnv": {
+    "ANTHROPIC_BASE_URL": "https://openrouter.ai/api",
+    "ANTHROPIC_AUTH_TOKEN": "${localEnv:OPENROUTER_API_KEY}",
+    "ANTHROPIC_API_KEY": "",
+    "ANTHROPIC_MODEL": "${localEnv:ANTHROPIC_MODEL}"
+  },
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "anthropic.claude-code"
+      ]
+    }
+  }
+}
