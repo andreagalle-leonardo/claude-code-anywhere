@@ -1,6 +1,6 @@
-# Claude Code + OpenRouter
+# claude-code-anywhere
 
-Use [Claude Code](https://docs.anthropic.com/en/docs/claude-code/overview) in VS Code with an [OpenRouter](https://openrouter.ai) API key — no Anthropic subscription required.
+Use [Claude Code](https://docs.anthropic.com/en/docs/claude-code/overview) in VS Code (or any dev container) with an [OpenRouter](https://openrouter.ai) API key — no Anthropic subscription required. Includes MCP client support.
 
 ---
 
@@ -14,7 +14,8 @@ Use [Claude Code](https://docs.anthropic.com/en/docs/claude-code/overview) in VS
    - [Step 3: Install Claude Code in VS Code](#step-3-install-claude-code-in-vs-code)
    - [Step 4: Configure the environment](#step-4-configure-the-environment)
    - [Step 5: Verify the connection](#step-5-verify-the-connection)
-4. [Using other models](#using-other-models)
+4. [MCP client support](#mcp-client-support)
+5. [Using other models](#using-other-models)
 
 ---
 
@@ -170,6 +171,84 @@ In the Claude Code chat box, type:
 ```
 
 You should see your model and provider confirmed. If you get an authentication error, double-check that `ANTHROPIC_AUTH_TOKEN` contains your OpenRouter key and that `ANTHROPIC_API_KEY` is set to an empty string.
+
+---
+
+## MCP client support
+
+Claude Code is an MCP **client** out of the box. This means it can connect to any [Model Context Protocol](https://modelcontextprotocol.io) server — giving it tools that extend beyond coding: reading files, querying databases, calling APIs, browsing the web, and much more.
+
+This setup works with MCP with no extra configuration. The OpenRouter routing is transparent to the MCP layer.
+
+### How MCP fits in
+
+```
+Claude Code (MCP client)
+    ├── OpenRouter  →  LLM (Claude, Llama, etc.)
+    └── MCP servers →  tools (filesystem, GitHub, Postgres, browser…)
+```
+
+Claude Code uses the LLM to decide *when* to call a tool, and MCP servers to actually *execute* it. The two channels are independent — swapping the LLM backend via OpenRouter has no effect on MCP connectivity.
+
+### Adding an MCP server
+
+MCP servers are registered in `~/.claude/mcp.json`. Create the file if it doesn't exist:
+
+```json
+{
+  "mcpServers": {
+    "filesystem": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "/your/project/path"]
+    },
+    "github": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "env": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "ghp_xxxx"
+      }
+    }
+  }
+}
+```
+
+Or register a server from the CLI:
+
+```bash
+claude mcp add filesystem npx -- -y @modelcontextprotocol/server-filesystem /your/project
+```
+
+Run `/mcp` inside Claude Code to see all connected servers and their status.
+
+### Adding MCP servers to the dev container
+
+To pre-install MCP servers inside the container, extend `postCreateCommand` in `devcontainer.json`:
+
+```json
+"postCreateCommand": "npm install -g @anthropic-ai/claude-code @modelcontextprotocol/server-filesystem @modelcontextprotocol/server-github"
+```
+
+Then place your `mcp.json` in the repo root and mount it into the container by adding to `devcontainer.json`:
+
+```json
+"mounts": [
+  "source=${localWorkspaceFolder}/mcp.json,target=/root/.claude/mcp.json,type=bind,consistency=cached"
+]
+```
+
+This way the entire Claude Code environment — LLM backend, model choice, and MCP tools — is fully defined in the repo and reproducible on any machine.
+
+### Useful MCP servers to get started
+
+| Server | npm package | What it gives Claude |
+|---|---|---|
+| Filesystem | `@modelcontextprotocol/server-filesystem` | Read/write files outside the workspace |
+| GitHub | `@modelcontextprotocol/server-github` | Issues, PRs, commits, repo search |
+| PostgreSQL | `@modelcontextprotocol/server-postgres` | Query and inspect a Postgres database |
+| Brave Search | `@modelcontextprotocol/server-brave-search` | Live web search |
+| Memory | `@modelcontextprotocol/server-memory` | Persistent key-value memory across sessions |
+
+A larger catalog is available at [https://github.com/modelcontextprotocol/servers](https://github.com/modelcontextprotocol/servers).
 
 ---
 
